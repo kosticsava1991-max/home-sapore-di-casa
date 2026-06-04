@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Sapore di Casa - Ricettario</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --text: #1a1a1a;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --accent: #c2410c;
+            --accent-soft: #fff7ed;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-hover: 0 10px 25px rgba(0,0,0,0.08), 0 6px 12px rgba(0,0,0,0.06);
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+        }
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-input, .filter-select {
+            padding: 10px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background: var(--bg-card);
+            transition: all 0.2s;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 240px;
+        }
+        .search-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.1);
+        }
+        .filter-select { cursor: pointer; }
+        .btn {
+            padding: 10px 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+            color: var(--text);
+        }
+        .btn:hover { background: #f3f4f6; }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .btn-primary:hover { background: #9a3412; }
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+        .stats strong { color: var(--text); font-weight: 600; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--accent);
+        }
+        .card-image {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .card-image.no-photo {
+            background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+        }
+        .card-image.no-photo::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%);
+        }
+        .card-emoji {
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .card-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+        .card-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text);
+        }
+        .card-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .meta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .difficulty {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .diff-facile { background: #d1fae5; color: #065f46; }
+        .diff-media { background: #fef3c7; color: #92400e; }
+        .diff-difficile { background: #fee2e2; color: #991b1b; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 24px 16px;
+        }
+        .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; }
+        .modal {
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+            margin: auto;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-hero {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(135deg, var(--accent) 0%, #9a3412 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .modal-hero.no-photo {
+            background: linear-gradient(135deg, #fb923c 0%, #c2410c 100%);
+        }
+        .modal-hero-emoji {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8rem;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+            z-index: 1;
+        }
+        .modal-hero img { width: 100%; height: 100%; object-fit: cover; }
+        .modal-hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.7) 100%);
+        }
+        .modal-hero-content {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            right: 24px;
+            color: white;
+        }
+        .modal-hero-category {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.9;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .modal-hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.875rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255,255,255,0.95);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            color: var(--text);
+        }
+        .modal-close:hover { background: white; }
+        .modal-body { padding: 24px; }
+        .info-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-box {
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .info-value { font-size: 0.9rem; font-weight: 600; }
+        .section { margin-bottom: 24px; }
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .dose-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-soft);
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+        .dose-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--accent);
+            font-family: inherit;
+        }
+        .dose-btn:hover { background: #fef3c7; }
+        .dose-value {
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 30px;
+            text-align: center;
+        }
+        .ingredients-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ingredient {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            gap: 12px;
+        }
+        .ingredient.section-divider {
+            background: var(--accent-soft);
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        .ingredient-name { flex: 1; }
+        .ingredient-qty {
+            color: var(--text-muted);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .procedimento {
+            list-style: none;
+            counter-reset: step;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .procedimento li {
+            counter-increment: step;
+            padding: 12px 14px 12px 44px;
+            background: #f9fafb;
+            border-radius: 8px;
+            position: relative;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .procedimento li::before {
+            content: counter(step);
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            width: 22px;
+            height: 22px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .allergens-banner {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .shelf-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        @media (max-width: 640px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+            .modal-hero { height: 200px; }
+            .modal-hero-title { font-size: 1.5rem; }
+            .modal-body { padding: 16px; }
+        }
+        @media print {
+            body { background: white; }
+            .toolbar, .stats, header, .modal-close, .modal-actions { display: none !important; }
+            .modal-overlay { position: static; background: white; padding: 0; }
+            .modal { box-shadow: none; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Home Sapore di Casa</h1>
+            <p>Il ricettario della cucina · Ingredienti · Grammature · Procedimenti</p>
+        </header>
+
+        <div class="toolbar">
+            <input type="text" class="search-input" id="searchInput" placeholder="Cerca per nome, ingrediente o categoria...">
+            <select class="filter-select" id="categoryFilter">
+                <option value="">Tutte le categorie</option>
+            </select>
+            <select class="filter-select" id="difficultyFilter">
+                <option value="">Tutte le difficoltà</option>
+                <option value="Facile">Facile</option>
+                <option value="Media">Media</option>
+                <option value="Difficile">Difficile</option>
+            </select>
+            <button class="btn" onclick="resetFilters()">Reset</button>
+        </div>
+
+        <div class="stats">
+            <span><strong id="totalCount">0</strong> ricette totali</span>
+            <span><strong id="shownCount">0</strong> mostrate</span>
+        </div>
+
+        <div class="grid" id="ricetteGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none;">
+            Nessuna ricetta trovata con questi criteri.
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal" onclick="closeModalOnOverlay(event)">
+        <div class="modal" id="modalContent">
+            <div class="modal-hero" id="modalHero">
+                <button class="modal-close" onclick="closeModal()">×</button>
+                <div class="modal-hero-emoji" id="modalHeroEmoji" style="display:none"></div>
+                <div class="modal-hero-overlay"></div>
+                <div class="modal-hero-content">
+                    <div class="modal-hero-category" id="modalCategory"></div>
+                    <h2 class="modal-hero-title" id="modalTitle"></h2>
+                </div>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const ricette = [{"id": 1, "nome": "Impasto Base Pancake", "categoria": "Pancake & Galettes", "emoji": "🥞", "ingredienti": [{"nome": "Uova intere", "quantità": "36 pz"}, {"nome": "Latte intero", "quantità": "5 l"}, {"nome": "Panna fresca", "quantità": "1 l"}, {"nome": "Farina tipo \"00\"", "quantità": "3 kg"}, {"nome": "Baking powder (lievito chimico)", "quantità": "240 g"}], "procedimento": ["Separare gli albumi dai tuorli.", "Montare gli albumi a neve ferma in planetaria con la frusta. Mettere da parte.", "In planetaria a velocità 3, mescolare: 3 l di latte, la panna, la farina e il baking powder. Amalgamare fino a impasto liscio.", "Aggiungere i restanti 2 l di latte. Continuare a mescolare fino a ottenere un composto omogeneo.", "Incorporare gli albumi a neve delicatamente a velocità 1.", "Trasferire nei contenitori e conservare in frigorifero."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 4 giorni in frigorifero. ATTENZIONE: base per tutte le varianti di pancake.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)"], "note": "", "foto": "https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=400&h=300&fit=crop"}, {"id": 2, "nome": "Cacao Pancake", "categoria": "Pancake & Galettes", "emoji": "🍫", "ingredienti": [{"nome": "Cacao amaro in polvere", "quantità": "100 g"}, {"nome": "Impasto pancake base", "quantità": "2 kg"}], "procedimento": ["Aggiungere il cacao amaro all'impasto pancake base già pronto.", "Mescolare fino a ottenere un colore uniforme e omogeneo, senza striature.", "Conservare in frigorifero."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)", "H (Frutta secca)"], "note": "", "foto": "https://images.unsplash.com/photo-1565299543923-37dd37887442?w=400&h=300&fit=crop"}, {"id": 3, "nome": "Strudel Pancake", "categoria": "Pancake & Galettes", "emoji": "🥧", "ingredienti": [{"nome": "— FARCITURA STRUDEL —", "quantità": ""}, {"nome": "Mele tagliate a cubetti (ca. 1 cm)", "quantità": "1 kg"}, {"nome": "Zucchero di canna", "quantità": "100 g"}, {"nome": "Uvetta", "quantità": "250 g"}, {"nome": "Pinoli", "quantità": "150 g"}, {"nome": "Succo di lime", "quantità": "100 g"}, {"nome": "Cannella in polvere", "quantità": "30 g"}, {"nome": "— BASE —", "quantità": ""}, {"nome": "Impasto pancake base", "quantità": "4 kg"}], "procedimento": ["Tagliare le mele a cubetti di ca. 1 cm.", "Ammollare l'uvetta in acqua fredda per 20 minuti, poi scolare.", "Unire: mele, uvetta, pinoli, zucchero, succo di lime e cannella. Mescolare bene.", "Confezionare il composto sottovuoto e lasciare macerare per 24 ore in frigorifero.", "Al momento dell'utilizzo, mescolare il composto con l'impasto pancake base."], "porzioni": "Variabile", "tempo": "24h marinatura + 20 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero una volta unito alla base.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)", "H (Frutta secca)"], "note": "", "foto": null}, {"id": 4, "nome": "Matcha Pancake", "categoria": "Pancake & Galettes", "emoji": "🍵", "ingredienti": [{"nome": "Polvere di tè matcha", "quantità": "25 g"}, {"nome": "Impasto pancake base", "quantità": "2 kg"}], "procedimento": ["Aggiungere la polvere di matcha all'impasto pancake base già pronto.", "Mescolare bene fino a ottenere un colore verde uniforme, senza grumi."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)"], "note": "", "foto": null}, {"id": 5, "nome": "Zucca Pancake", "categoria": "Pancake & Galettes", "emoji": "🎃", "ingredienti": [{"nome": "Uova intere", "quantità": "36 pz"}, {"nome": "Panna fresca", "quantità": "1 l"}, {"nome": "Latte intero", "quantità": "2 l"}, {"nome": "Farina tipo \"00\"", "quantità": "3 kg"}, {"nome": "Baking powder (lievito chimico)", "quantità": "240 g"}, {"nome": "Purea di zucca", "quantità": "2,5 kg"}, {"nome": "Zucchero semolato", "quantità": "1 kg"}, {"nome": "Cannella in polvere", "quantità": "60 g"}, {"nome": "Zenzero fresco (pelato e frullato)", "quantità": "100 g"}, {"nome": "Vaniglia (estratto o bacca)", "quantità": "1 cucchiaio"}], "procedimento": ["Pelare lo zenzero e frullarlo finemente.", "In planetaria con la frusta, montare i tuorli con lo zucchero, la vaniglia e lo zenzero frullato a velocità massima fino a ottenere un composto chiaro e spumoso.", "Aggiungere la purea di zucca, la cannella, la farina, la panna e una parte del latte. Amalgamare bene.", "Continuare come da procedura dell'impasto base (montare gli albumi a neve ferma e incorporarli delicatamente)."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 4 giorni in frigorifero.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)"], "note": "", "foto": null}, {"id": 6, "nome": "Pancake Panettone", "categoria": "Pancake & Galettes", "emoji": "🎄", "ingredienti": [{"nome": "— AROMA PANETTONE —", "quantità": ""}, {"nome": "Marsala", "quantità": "80 g"}, {"nome": "Rum", "quantità": "80 g"}, {"nome": "Miele", "quantità": "200 g"}, {"nome": "Acqua", "quantità": "100 g"}, {"nome": "Arancia candita", "quantità": "280 g"}, {"nome": "Cedro candito", "quantità": "280 g"}, {"nome": "Burro", "quantità": "100 g"}, {"nome": "Vaniglia (estratto)", "quantità": "1 cucchiaio"}, {"nome": "Sale", "quantità": "1 pizzico"}, {"nome": "— IMPASTO PANCAKE PANETTONE —", "quantità": ""}, {"nome": "Aroma panettone (1 dose sopra)", "quantità": "1 pz"}, {"nome": "Uova intere", "quantità": "18 pz"}, {"nome": "Zucchero semolato", "quantità": "500 g"}, {"nome": "Baking powder (lievito chimico)", "quantità": "120 g"}, {"nome": "Latte intero", "quantità": "2,5 l"}, {"nome": "Panna fresca", "quantità": "0,5 l"}, {"nome": "Farina tipo \"00\"", "quantità": "1,5 kg"}, {"nome": "Arancia candita", "quantità": "200 g"}, {"nome": "Cedro candito", "quantità": "200 g"}, {"nome": "Uvetta", "quantità": "200 g"}, {"nome": "Farina di grano saraceno Castellani", "quantità": "2 kg"}, {"nome": "Farina di grano saraceno Slovena", "quantità": "1 kg"}, {"nome": "Aceto di mele", "quantità": "65 g"}, {"nome": "Uova intere", "quantità": "3 pz"}, {"nome": "Acqua", "quantità": "6 l"}, {"nome": "Sale fino", "quantità": "25 g"}], "procedimento": ["AROMA — Sciogliere il burro. Mettere tutti gli ingredienti dell'aroma nel Bimby e frullare fino a pasta omogenea. Confezionare sottovuoto. Shelf life aroma: 15 giorni in frigorifero.", "IMPASTO — In planetaria con la frusta, montare gli albumi a neve ferma. Mettere da parte.", "Montare i tuorli con lo zucchero a velocità 3 per qualche minuto fino a composto chiaro.", "Aggiungere la dose di aroma panettone, poi procedere come per l'impasto base (farina, latte, panna, baking powder).", "Incorporare delicatamente gli albumi a neve.", "Infine aggiungere i canditi e l'uvetta e mescolare con cura.", "GALETTES — IMPASTO", "Con la frusta, amalgamare tutti gli ingredienti fino a ottenere un impasto liscio e senza grumi.", "Coprire e lasciare riposare in frigorifero. CONSIGLIO: preparare l'impasto il giorno prima per migliorare la resa in cottura.", "UTILIZZO: per ogni galette usare 170 g di impasto crudo (resa cotta: ca. 120 g)."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Difficile", "shelf_life": "Preparare il giorno prima del servizio. Conservare in frigorifero.", "allergeni": ["C (Uova)", "N (Grano saraceno)"], "note": "", "foto": null}, {"id": 7, "nome": "French Toast", "categoria": "French Toast & Quiche", "emoji": "🍞", "ingredienti": [{"nome": "— CREMA (per 12 fette / 3 sacchetti) —", "quantità": ""}, {"nome": "Uova intere", "quantità": "4 pz"}, {"nome": "Latte UHT intero", "quantità": "1 l"}, {"nome": "Zucchero semolato", "quantità": "250 g"}, {"nome": "Rum", "quantità": "20 g"}, {"nome": "Vaniglia (estratto)", "quantità": "1 punta"}, {"nome": "— PANE —", "quantità": ""}, {"nome": "Fette di pane bianco e/o integrale, spessore ca. 2 cm", "quantità": "q.b."}, {"nome": "Farina tipo \"00\"", "quantità": "2 kg"}, {"nome": "Tuorlo d'uovo pastorizzato", "quantità": "160 g"}, {"nome": "Burro (morbido, temperatura ambiente)", "quantità": "1 kg"}, {"nome": "Acqua fredda", "quantità": "400 g"}, {"nome": "Sale fino", "quantità": "40 g"}, {"nome": "— Per 3 stampi da 32 cm —", "quantità": ""}, {"nome": "Pancetta tesa a cubetti", "quantità": "750 g"}, {"nome": "Formaggio mix (Asiago, Cheddar, Emmental)", "quantità": "600 g"}, {"nome": "Uova intere", "quantità": "15 pz"}, {"nome": "Panna fresca", "quantità": "2 l"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["CREMA — Nel Bimby con farfalla: uova, zucchero, rum e vaniglia. Montare a velocità 3 per 2 minuti.", "Aggiungere il latte e mescolare ancora 2 minuti.", "PANE — Le fette devono essere dure. Se fresco, tostare in forno a 160 °C per 20–30 minuti.", "ASSEMBLAGGIO — Dividere 12 fette in 3 buste sottovuoto (4 fette per busta). Distribuire la crema in parti uguali.", "Chiudere sottovuoto per soli 3–4 secondi, per non schiacciare il pane.", "IMPORTANTE: utilizzare almeno 12 ore dopo la messa sottovuoto, per permettere alla crema di penetrare nel pane.", "QUICHE LORRAINE — PASTA BRISÉE", "Lasciare il burro a temperatura ambiente fino a renderlo morbido, ma non sciolto.", "In planetaria con l'arpa, mettere tutti gli ingredienti tranne l'acqua. Mescolare a velocità medio-bassa.", "Quando l'impasto inizia ad amalgamarsi, aggiungere l'acqua a filo lentamente.", "Lavorare fino a formare una palla liscia. Finire di impastare a mano.", "Dividere in 6 parti da ca. 600 g. Formare delle palle e chiuderle singolarmente sottovuoto.", "Fare riposare in frigorifero almeno 2 ore prima dell'uso.", "QUICHE LORRAINE — FARCITURA E COTTURA", "Tagliare la pancetta a cubetti non troppo piccoli. Rosolare in padella a fuoco medio fino a leggera doratura.", "Separare il grasso di cottura dalla pancetta. Far raffreddare entrambi.", "Frullare il formaggio nel Bimby per ottenere un grattugiato grossolano.", "Sbattere le uova con la panna, sale, pepe e il grasso della pancetta. Non montare, solo mescolare. Aggiungere il formaggio.", "PRE-COTTURA — Stendere ogni palla di pasta brisée (a temperatura ambiente) in disco ca. 3 cm più largo dello stampo.", "Imburrare gli stampi, posizionare la pasta premendo bene bordi e lati. Mettere al centro carta da forno con un piatto sopra.", "Pre-cuocere a 170 °C per 30 minuti. Sfornare.", "COTTURA FINALE — Inserire pancetta e crema nei tre stampi. Spennellare il bordo di pasta esposta con tuorlo.", "Cuocere a 165 °C per ca. 30 minuti. Abbattere in positivo quando pronta."], "porzioni": "Variabile", "tempo": "12h cottura + 2 min", "difficolta": "Difficile", "shelf_life": "Shelf life: 5 giorni in frigorifero. Da ogni torta si ricavano 8 fette.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)"], "note": "", "foto": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=400&h=300&fit=crop"}, {"id": 8, "nome": "Pollo Speziato al Forno", "categoria": "Carni", "emoji": "🍗", "ingredienti": [{"nome": "— SALAMOIA —", "quantità": ""}, {"nome": "Sale fino", "quantità": "50 g"}, {"nome": "Zucchero semolato", "quantità": "50 g"}, {"nome": "Acqua", "quantità": "1 l"}, {"nome": "— CARNE —", "quantità": ""}, {"nome": "Cosce di pollo", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Mix spezie pollo", "quantità": "q.b."}, {"nome": "Acqua (per teglia)", "quantità": "ca. 1 cm per teglia"}], "procedimento": ["SALAMOIA — Sciogliere sale e zucchero in acqua calda, raffreddare con acqua fredda (1 l per dose). Per 1 cassa di pollo (ca. 11 kg) servono ca. 8 l di salamoia.", "Immergere le cosce nella salamoia. Devono essere completamente coperte. Lasciare 24 ore in frigorifero.", "Scolare, sciacquare bene e asciugare.", "Disporre in teglie (h 4 cm), 8 cosce per teglia, con un filo di olio evo sotto.", "Speziare abbondantemente con il mix spezie pollo sul lato della pelle. Aggiungere un filo di olio evo sopra.", "Aggiungere ca. 1 cm di acqua in ogni teglia. Cuocere a 160 °C per 100 minuti senza copertura.", "Far intiepidire. Disossare eliminando la pelle. Separare e conservare la salsa di cottura.", "Confezionare la carne con una parte di salsa in buste sottovuoto."], "porzioni": "Variabile", "tempo": "24h marinatura + 100 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero sottovuoto. Per grandi quantità: abbattere una parte.", "allergeni": [], "note": "", "foto": "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=400&h=300&fit=crop"}, {"id": 9, "nome": "Pulled Pork", "categoria": "Carni", "emoji": "🍖", "ingredienti": [{"nome": "— SALAMOIA —", "quantità": ""}, {"nome": "Sale fino", "quantità": "50 g"}, {"nome": "Zucchero semolato", "quantità": "50 g"}, {"nome": "Acqua", "quantità": "1 l"}, {"nome": "— CARNE —", "quantità": ""}, {"nome": "Collo di maiale (coppa)", "quantità": "q.b."}, {"nome": "— SALSA (per ca. 8 colli) —", "quantità": ""}, {"nome": "Cipolla stufata alla birra", "quantità": "300 g"}, {"nome": "Mix spezie pulled", "quantità": "250 g"}, {"nome": "Sciroppo d'acero", "quantità": "400 ml"}, {"nome": "Aceto di mele", "quantità": "150 g"}, {"nome": "Salsa di soia gluten free", "quantità": "300 g"}, {"nome": "Salsa di pomodoro", "quantità": "1 kg"}, {"nome": "Ketchup", "quantità": "5 kg"}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}], "procedimento": ["SALSA — Rosolare la cipolla stufata con un filo di olio. Aggiungere le spezie e tostare.", "Sfumare con l'aceto di mele. Quando l'odore di aceto è svanito, aggiungere salsa di pomodoro e sciroppo d'acero.", "Cuocere a fuoco basso 30 minuti mescolando spesso. A fuoco spento aggiungere soia e ketchup.", "Frullare tutto con frullatore a immersione fino a salsa liscia.", "CARNE — Eliminare grasso e copertine. Tagliare ogni collo in 4 parti per il lungo.", "Preparare la salamoia (1 l per dose). Immergere la carne e lasciare 24 ore in frigorifero.", "Scolare, sciacquare. Immergere ogni pezzo nella salsa pulled. Avvolgere con carta da forno a forma di \"caramella\".", "Disporre 3–4 caramelle per teglia (h 4 cm). Coprire con altra teglia o carta argentata.", "Cuocere a 150 °C per 4 ore e 30 minuti.", "Far intiepidire, togliere la carta e \"pullare\" amalgamando con tutta la salsa. Confezionare sottovuoto."], "porzioni": "Variabile", "tempo": "24h marinatura + 30 min", "difficolta": "Difficile", "shelf_life": "Shelf life: 6 giorni in frigorifero sottovuoto. Per grandi quantità: abbattere una parte.", "allergeni": ["F (Soia)", "N (Senape)"], "note": "", "foto": "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=400&h=300&fit=crop"}, {"id": 10, "nome": "Girello di Vitello CBT", "categoria": "Carni", "emoji": "🥩", "ingredienti": [{"nome": "— SALAMOIA —", "quantità": ""}, {"nome": "Zucchero semolato", "quantità": "40 g"}, {"nome": "Sale fino", "quantità": "50 g"}, {"nome": "Acqua", "quantità": "1 l"}, {"nome": "— CARNE —", "quantità": ""}, {"nome": "Girello di vitello (ca. 1,2 kg cad.)", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Timo fresco", "quantità": "q.b."}], "procedimento": ["Rifilare il girello eliminando copertina e grasso in eccesso. Tagliare ogni girello in 2 parti uguali.", "Salamoia: sciogliere sale e zucchero in acqua calda, raffreddare con acqua fredda. Immergere il vitello, deve essere completamente coperto.", "Lasciare in salamoia 24 ore in frigorifero.", "Estrarre, sciacquare, asciugare e pepare.", "Confezionare ogni pezzo in sacchetto sottovuoto da cottura con 1 rametto di timo e 1 filo di olio evo. Sigillare.", "Cuocere in forno a vapore o roner a 57 °C per 3 ore e 30 minuti.", "A cottura ultimata, abbattere immediatamente in acqua e ghiaccio o in abbattitore."], "porzioni": "Variabile", "tempo": "24h marinatura + 30 min", "difficolta": "Media", "shelf_life": "Shelf life: 10 giorni in frigorifero sottovuoto. Per grandi quantità: è possibile congelare.", "allergeni": [], "note": "", "foto": null}, {"id": 11, "nome": "Petto di Tacchino CBT", "categoria": "Carni", "emoji": "🦃", "ingredienti": [{"nome": "— SALAMOIA —", "quantità": ""}, {"nome": "Sale fino", "quantità": "50 g"}, {"nome": "Zucchero semolato", "quantità": "40 g"}, {"nome": "Acqua", "quantità": "1 l"}, {"nome": "— CARNE —", "quantità": ""}, {"nome": "Petto di tacchino", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}, {"nome": "Timo fresco", "quantità": "q.b."}], "procedimento": ["Tagliare il petto di tacchino in 4 pezzi, eliminando eventuali cartilagini.", "Preparare la salamoia (1 l per dose). Immergere il tacchino e lasciare 24 ore in frigorifero.", "Estrarre, sciacquare bene, condire con poco pepe e timo.", "Confezionare ogni pezzo in busta da cottura con un filo di olio. Sigillare.", "Cuocere a 65 °C per 5 ore in forno a vapore o roner.", "A cottura ultimata, abbattere in acqua e ghiaccio."], "porzioni": "Variabile", "tempo": "24h marinatura", "difficolta": "Media", "shelf_life": "Shelf life: 10 giorni in frigorifero sottovuoto. Per grandi quantità: è possibile congelare.", "allergeni": [], "note": "", "foto": null}, {"id": 12, "nome": "Salsiccia CBT", "categoria": "Carni", "emoji": "🌭", "ingredienti": [{"nome": "Impasto salsiccia", "quantità": "q.b."}], "procedimento": ["Dividere 1 kg di impasto salsiccia in due buste sottovuoto da cottura.", "Schiacciare bene formando una \"piastrella\" piatta e uniforme.", "Cuocere a 60 °C per 1 ora in forno a vapore o roner.", "A cottura ultimata, abbattere immediatamente."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero sottovuoto.", "allergeni": [], "note": "", "foto": null}, {"id": 13, "nome": "Salmone CBT", "categoria": "Pesce & Uova", "emoji": "🐟", "ingredienti": [{"nome": "Salmone fresco", "quantità": "q.b."}, {"nome": "Sale fino", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Porzionare il salmone in tranci da ca. 100 g, evitando coda e pancia grassa.", "Togliere la pelle dagli scarti, confezionare sottovuoto e congelare per altre preparazioni.", "Salare i tranci. Confezionare in buste da cottura con 4 pezzi per busta.", "Cuocere a 52 °C per 20 minuti in roner o forno a vapore.", "A cottura ultimata, abbattere in positivo."], "porzioni": "Variabile", "tempo": "20 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": ["D (Pesce)"], "note": "", "foto": "https://images.unsplash.com/photo-1485921325833-c519f76c4927?w=400&h=300&fit=crop"}, {"id": 14, "nome": "Gamberi CBT", "categoria": "Pesce & Uova", "emoji": "🦐", "ingredienti": [{"nome": "Code di gambero surgelate", "quantità": "q.b."}, {"nome": "Salsa oelek", "quantità": "q.b."}, {"nome": "Peperoncino in polvere", "quantità": "q.b."}], "procedimento": ["Scongelare e pulire le code di gambero: eliminare carapace e intestino, poi tagliare a metà nel senso della lunghezza.", "Disporre nelle buste piccole da cottura. Aggiungere poca salsa oelek e pochissimo peperoncino.", "Cuocere a 65 °C per 10 minuti in roner o forno a vapore.", "Abbattere fino a raffreddamento."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero sottovuoto.", "allergeni": ["B (Crostacei)", "F (Soia)", "M (Sesamo)", "N (Senape)"], "note": "", "foto": null}, {"id": 15, "nome": "Polipo CBT", "categoria": "Pesce & Uova", "emoji": "🐙", "ingredienti": [{"nome": "Polipo surgelato Indo-Pacifico 1000/2000 g", "quantità": "q.b."}, {"nome": "Sale fino", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}, {"nome": "Aceto di vino", "quantità": "q.b."}, {"nome": "Gelatina di polipo (da lavorazioni precedenti)", "quantità": "q.b."}], "procedimento": ["Scongelare i polipi. Separare i tentacoli dalla testa.", "Portare a bollore abbondante acqua salata con qualche grano di pepe e un goccio di aceto. Preparare una vasca con acqua e ghiaccio.", "Sbollentare i tentacoli per 1 minuto per farli arricciare, poi raffreddarli in acqua e ghiaccio.", "Confezionare i tentacoli sottovuoto (4–5 pezzi per sacchetto) con 1 mestolo di gelatina di polipo.", "Cuocere in forno a vapore o roner a 73 °C per 7 ore e 30 minuti.", "A cottura ultimata, abbattere in acqua e ghiaccio. Lasciare in frigorifero almeno qualche ora.", "Estrarre il polipo. Ridurre la parte gelatinosa a metà in pentola, far raffreddare e conservare sottovuoto per le prossime lavorazioni.", "Tagliare le teste a quadrati. Unire le teste ai pezzi di tentacolo sottili: confezionare sottovuoto.", "Tagliare le parti più grosse dei tentacoli per il lungo. Confezionare 12 pezzi per sacchetto."], "porzioni": "Variabile", "tempo": "7h cottura + 30 min", "difficolta": "Difficile", "shelf_life": "Shelf life: 6 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": ["P (Molluschi)"], "note": "", "foto": null}, {"id": 16, "nome": "Calamaro CBT", "categoria": "Pesce & Uova", "emoji": "🦑", "ingredienti": [{"nome": "Calamari surgelati 100/300 (Francia)", "quantità": "q.b."}, {"nome": "Sale fino", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}], "procedimento": ["Scongelare i calamari e pulirli. Asciugare bene.", "Salare e pepare ogni calamaro, comprese le teste.", "Confezionare in buste da cottura: 1 calamaro per busta. Fare buste separate con le teste.", "Aggiungere un filo di olio evo in ogni busta. Sigillare.", "Cuocere in forno a vapore o roner a 58 °C: corpi 25 minuti, teste 30 minuti.", "A cottura ultimata, abbattere in acqua e ghiaccio. Unificare le due cotture al momento del servizio."], "porzioni": "Variabile", "tempo": "25 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": ["P (Molluschi)"], "note": "", "foto": null}, {"id": 17, "nome": "Tonno Tataki", "categoria": "Pesce & Uova", "emoji": "🐟", "ingredienti": [{"nome": "— MARINATURA —", "quantità": ""}, {"nome": "Salsa di soia gluten free", "quantità": "2 l"}, {"nome": "Miele", "quantità": "200 g"}, {"nome": "— TONNO —", "quantità": ""}, {"nome": "Tonno pinna gialla fresco (Yellowfin)", "quantità": "q.b."}, {"nome": "Semi di sesamo bianchi e neri", "quantità": "q.b."}], "procedimento": ["MARINATURA — In pentola: soia + miele. Portare a bollore e ridurre fino a 1 litro. Far raffreddare in frigorifero.", "TONNO — Tagliare il trancio in rettangoli lunghi ca. 3×3 cm.", "Confezionare i filoncini in buste sottovuoto con poca marinatura. Lasciare riposare 24 ore in frigorifero.", "Estrarre dalla busta e asciugare bene la marinatura in eccesso.", "Scottare in piastra molto calda per ca. 2 minuti per lato. Il tonno deve rimanere crudo al centro.", "Abbattere in positivo. Porzionare in pezzi da 90 g. Confezionare 5 pezzi per busta. Abbattere in negativo (congelare).", "AL SERVIZIO — Scongelare lentamente. Bagnare con poco miele allungato con acqua. Impanare nel sesamo bianco e nero.", "Riconfezionare in monoporzioni. Scaldare leggermente in piastra al momento del servizio. Va servito tiepido."], "porzioni": "Variabile", "tempo": "24h marinatura + 2 min", "difficolta": "Media", "shelf_life": "Shelf life dopo il coating: 5 giorni in frigorifero.", "allergeni": ["D (Pesce)", "F (Soia)", "M (Sesamo)"], "note": "", "foto": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop"}, {"id": 18, "nome": "Uovo Poché CBT", "categoria": "Pesce & Uova", "emoji": "🍳", "ingredienti": [{"nome": "Uova freschissime", "quantità": "q.b."}], "procedimento": ["Cuocere le uova in roner a 75 °C per 12 minuti.", "A cottura ultimata, abbattere immediatamente in acqua e ghiaccio."], "porzioni": "Variabile", "tempo": "12 min", "difficolta": "Facile", "shelf_life": "Shelf life: 4 giorni in frigorifero. A temperatura ambiente: massimo 2 giorni.", "allergeni": ["C (Uova)"], "note": "", "foto": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=400&h=300&fit=crop"}, {"id": 19, "nome": "Crema Cacio e Pepe", "categoria": "Formaggi & Creme", "emoji": "🍮", "ingredienti": [{"nome": "Pecorino Romano grattugiato", "quantità": "500 g"}, {"nome": "Parmigiano Reggiano grattugiato", "quantità": "500 g"}, {"nome": "Panna fresca", "quantità": "500 g"}, {"nome": "Acqua", "quantità": "300 g"}, {"nome": "Pepe nero in grani", "quantità": "15 g"}], "procedimento": ["Frullare i grani di pepe nel Bimby fino a ridurli in polvere fine.", "Aggiungere tutti gli altri ingredienti nel Bimby.", "Cuocere a 37 °C per 20 minuti a velocità 4.", "A fine cottura, frullare a massima velocità per 1 minuto fino a crema liscia e vellutata.", "Trasferire in contenitori ermetici."], "porzioni": "Variabile", "tempo": "20 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 20, "nome": "Formaggio Fresco al Curry", "categoria": "Formaggi & Creme", "emoji": "🍛", "ingredienti": [{"nome": "Formaggio fresco Debic", "quantità": "1,5 kg"}, {"nome": "Panna fresca", "quantità": "150 g"}, {"nome": "Pasta di curry gialla (o arancione)", "quantità": "100 g"}], "procedimento": ["Mettere tutti gli ingredienti nel Bimby con la farfalla.", "Frullare a velocità 3 fino a composto omogeneo e liscio.", "Trasferire in contenitore ermetico."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 7 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 21, "nome": "Crema di Mozzarella di Bufala", "categoria": "Formaggi & Creme", "emoji": "🧀", "ingredienti": [{"nome": "Mozzarella di bufala (ca. 3 pezzi)", "quantità": "750 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "260 g"}, {"nome": "Panna fresca", "quantità": "650 g"}, {"nome": "Xantana", "quantità": "2 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe bianco", "quantità": "q.b."}], "procedimento": ["Inserire tutti gli ingredienti nel Bimby.", "Frullare a massima velocità per 30 secondi.", "Cuocere a 50 °C per 10 minuti.", "A cottura terminata, frullare a massima velocità per 1 minuto.", "Trasferire in biberon medi."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": "https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400&h=300&fit=crop"}, {"id": 22, "nome": "Crema di Gorgonzola", "categoria": "Formaggi & Creme", "emoji": "🧀", "ingredienti": [{"nome": "Gorgonzola (1 confezione intera)", "quantità": "1,5 kg"}, {"nome": "Panna fresca", "quantità": "450 g"}], "procedimento": ["Inserire tutti gli ingredienti nel Bimby.", "Cuocere a 50 °C per 10 minuti.", "A cottura terminata, frullare a massima velocità per 1 minuto.", "Trasferire in scatole ermetiche."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=300&fit=crop"}, {"id": 23, "nome": "Salsa Home", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Yogurt intero", "quantità": "3 kg"}, {"nome": "Maionese", "quantità": "1 kg"}, {"nome": "Panna acida", "quantità": "500 g"}, {"nome": "Succo di lime", "quantità": "40 g"}, {"nome": "Senape", "quantità": "60 g"}, {"nome": "Mix spezie Home", "quantità": "120 g"}], "procedimento": ["Con una frusta a mano mescolare tutti gli ingredienti fino a ottenere una salsa omogenea."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 1 secchio piccolo.", "allergeni": ["C (Uova)", "G (Latte)", "L (Sedano)", "N (Senape)"], "note": "", "foto": null}, {"id": 24, "nome": "Crème Fraîche Alla Barbabietola", "categoria": "Salse & Dressing", "emoji": "🫐", "ingredienti": [{"nome": "Barbabietola rossa precotta", "quantità": "400 g (1 conf.)"}, {"nome": "Crème fraîche", "quantità": "1 kg"}, {"nome": "Sale", "quantità": "q.b."}], "procedimento": ["Sciacquare e togliere la buccia dalla barbabietola.", "Frullare la barbabietola nel Bimby fino a purea liscia.", "Aggiungere la crème fraîche e amalgamare bene con la spatola.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 2 sac-à-poche.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 25, "nome": "Salsa Home Alla Barbabietola", "categoria": "Salse & Dressing", "emoji": "🫐", "ingredienti": [{"nome": "Yogurt intero", "quantità": "4,5 kg"}, {"nome": "Barbabietola rossa precotta", "quantità": "1,2 kg (3 conf.)"}, {"nome": "Zenzero fresco", "quantità": "5 g"}, {"nome": "Succo di lime", "quantità": "40 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "100 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Pelare lo zenzero e tagliarlo a pezzetti. Pelare le barbabietole.", "Nel Bimby: zenzero, barbabietole, lime, olio, sale, pepe (tutto tranne yogurt). Frullare al massimo.", "Aggiungere 2 mestoli di yogurt e frullare a massima potenza fino a crema liscia.", "Trasferire in contenitore e mescolare con il restante yogurt. Aggiustare di sale e pepe."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 5 giorni in frigorifero. Resa: 1 secchio piccolo.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 26, "nome": "Salsa Yogurt", "categoria": "Salse & Dressing", "emoji": "🥛", "ingredienti": [{"nome": "Yogurt greco", "quantità": "2 kg"}, {"nome": "Succo di lime", "quantità": "80 g"}, {"nome": "Cumino in polvere", "quantità": "10 g"}, {"nome": "Menta fresca", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Nel Bimby frullare: menta, cumino, succo di lime e una piccola parte di yogurt.", "Aggiungere il restante yogurt e frullare brevemente (il meno possibile per mantenere la consistenza).", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 3 sac-à-poche.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 27, "nome": "Salsa Coleslaw", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Panna acida", "quantità": "1 kg"}, {"nome": "Aceto di mele", "quantità": "200 g"}, {"nome": "Maionese", "quantità": "150 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Mescolare tutti gli ingredienti in ciotola fino a salsa omogenea."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["C (Uova)", "G (Latte)", "N (Senape)"], "note": "", "foto": null}, {"id": 28, "nome": "Dressing Vinaigrette (Per Insalata di Patate)", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Aceto di vino bianco", "quantità": "200 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "400 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Mettere tutti gli ingredienti in un biberon.", "Agitare vigorosamente prima di ogni utilizzo."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 15 giorni in frigorifero. Agitare sempre prima dell'uso.", "allergeni": ["N (Senape)"], "note": "", "foto": null}, {"id": 29, "nome": "Dressing Vinaigrette Alla Senape", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Aceto di vino bianco", "quantità": "200 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "400 g"}, {"nome": "Senape di Digione", "quantità": "80 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Frullare tutti gli ingredienti con il frullatore a immersione fino a emulsione.", "Trasferire in biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 15 giorni in frigorifero.", "allergeni": ["L (Sedano)", "N (Senape)"], "note": "", "foto": null}, {"id": 30, "nome": "Dressing Vinaigrette Balsamico e Senape", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Aceto balsamico", "quantità": "200 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "400 g"}, {"nome": "Senape di Digione", "quantità": "150 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Frullare tutti gli ingredienti con il frullatore a immersione fino a emulsione.", "Trasferire in biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 15 giorni in frigorifero.", "allergeni": ["L (Sedano)", "N (Senape)"], "note": "", "foto": null}, {"id": 31, "nome": "Dressing Asian (Per Power Bowl)", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Olio extravergine d'oliva", "quantità": "150 g"}, {"nome": "Succo di lime", "quantità": "150 g"}, {"nome": "Salsa di soia gluten free", "quantità": "300 g"}], "procedimento": ["Mettere tutti gli ingredienti in un biberon.", "Agitare vigorosamente prima di ogni utilizzo."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 15 giorni. Agitare sempre prima dell'uso.", "allergeni": ["F (Soia)"], "note": "", "foto": null}, {"id": 32, "nome": "Dressing Spicy per Cetrioli", "categoria": "Salse & Dressing", "emoji": "🥗", "ingredienti": [{"nome": "Olio extravergine d'oliva", "quantità": "260 g"}, {"nome": "Aceto di riso", "quantità": "195 g"}, {"nome": "Salsa di soia gluten free", "quantità": "480 g"}, {"nome": "Mirin", "quantità": "130 g"}, {"nome": "Olio di sesamo", "quantità": "65 g"}, {"nome": "Sambal oelek", "quantità": "80 g"}], "procedimento": ["Mettere tutti gli ingredienti nei biberon.", "Agitare bene. Conservare in frigorifero."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 15 giorni in frigorifero. Resa: 2 biberon grandi.", "allergeni": ["F (Soia)", "M (Sesamo)", "N (Senape)"], "note": "", "foto": null}, {"id": 33, "nome": "Dressing al Sesamo", "categoria": "Salse & Dressing", "emoji": "🌰", "ingredienti": [{"nome": "Olio extravergine d'oliva", "quantità": "300 g"}, {"nome": "Sesam dressing (salsa pronta)", "quantità": "300 g"}], "procedimento": ["Mettere tutto in un biberon. Agitare bene."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 7 giorni in frigorifero.", "allergeni": [], "note": "", "foto": null}, {"id": 34, "nome": "Salsa Teriyaki", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Salsa di soia gluten free", "quantità": "3 l"}, {"nome": "Mirin", "quantità": "825 g"}, {"nome": "Zucchero semolato", "quantità": "480 g"}, {"nome": "Sakè", "quantità": "360 g"}, {"nome": "Maizena", "quantità": "150 g"}, {"nome": "Acqua", "quantità": "300 g"}], "procedimento": ["In pentola: portare a bollore il sakè con lo zucchero.", "Aggiungere la soia e il mirin. Dal bollore, far sobbollire per 10 minuti.", "In ciotola: sciogliere la maizena nei 300 g di acqua fredda senza grumi.", "Versare la maizena nella pentola e cuocere altri 3 minuti mescolando con la frusta.", "Abbattere in positivo. Trasferire in sacchetti da ca. 700 g l'uno."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Media", "shelf_life": "Shelf life: 30 giorni in frigorifero.", "allergeni": ["A (Glutine)", "F (Soia)"], "note": "", "foto": null}, {"id": 35, "nome": "Salsa Cocco e Barbabietola", "categoria": "Salse & Dressing", "emoji": "🫐", "ingredienti": [{"nome": "Latte di cocco", "quantità": "1.200 g"}, {"nome": "Barbabietola rossa precotta", "quantità": "400 g (1 conf.)"}, {"nome": "Xantana", "quantità": "7 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Sciacquare e sbucciare la barbabietola.", "Nel Bimby frullare la barbabietola con una latta di latte di cocco. Amalgamare con la spatola.", "Aggiungere il restante latte di cocco e la xantana. Frullare a crema liscia.", "Aggiustare di sale e pepe. Dividere nei biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 3 biberon medi.", "allergeni": ["H (Frutta secca)"], "note": "", "foto": null}, {"id": 36, "nome": "Salsa al Curry", "categoria": "Salse & Dressing", "emoji": "🍛", "ingredienti": [{"nome": "Latte di cocco", "quantità": "800 g"}, {"nome": "Pasta di curry giallo", "quantità": "70 g"}, {"nome": "Xantana", "quantità": "4 g"}], "procedimento": ["Mettere tutti gli ingredienti in una brocca.", "Frullare con il frullatore a immersione fino a salsa liscia.", "Dividere nei biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 2 biberon medi.", "allergeni": ["H (Frutta secca)"], "note": "", "foto": null}, {"id": 37, "nome": "Salsa Cocco", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Latte di cocco", "quantità": "400 g"}, {"nome": "Succo di lime", "quantità": "20 g"}, {"nome": "Xantana", "quantità": "3 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Mettere tutti gli ingredienti in una brocca.", "Frullare con il frullatore a immersione.", "Dividere nei biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 1 biberon medio.", "allergeni": ["H (Frutta secca)"], "note": "", "foto": null}, {"id": 38, "nome": "Oelek Sauce (Salsa da Cottura)", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Oelek (sambal)", "quantità": "150 g"}, {"nome": "Salsa di soia", "quantità": "300 g"}, {"nome": "Aceto di mele", "quantità": "50 g"}, {"nome": "Olio di sesamo", "quantità": "30 g"}, {"nome": "Ketchup", "quantità": "120 g"}, {"nome": "Peperoncino in polvere", "quantità": "8 g"}, {"nome": "Aglio in polvere", "quantità": "3 g"}, {"nome": "Cipolla in polvere", "quantità": "3 g"}], "procedimento": ["Mescolare tutti gli ingredienti in ciotola fino a salsa omogenea.", "Trasferire in biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 20 giorni in frigorifero. Resa: 1 biberon grande.", "allergeni": ["F (Soia)", "M (Sesamo)", "N (Senape)"], "note": "", "foto": null}, {"id": 39, "nome": "Marinata al Cocco (Salsa da Cottura)", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Latte di cocco", "quantità": "400 g"}, {"nome": "Succo di lime", "quantità": "20 g"}, {"nome": "Cipolla in polvere", "quantità": "4 g"}, {"nome": "Aglio in polvere", "quantità": "2 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Mettere tutti gli ingredienti in una brocca.", "Frullare con il frullatore a immersione fino a composto omogeneo.", "Trasferire in biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 1 biberon medio.", "allergeni": ["H (Frutta secca)"], "note": "", "foto": null}, {"id": 40, "nome": "Salsa Tonnata", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Tonno sott'olio (sgocciolato bene)", "quantità": "1.730 g (1 latta)"}, {"nome": "Uova sode", "quantità": "3 pz"}, {"nome": "Capperi sotto sale (sciacquati)", "quantità": "125 g"}, {"nome": "Crème fraîche", "quantità": "250 g"}, {"nome": "Maionese", "quantità": "300 g"}], "procedimento": ["Cuocere le uova sode per 12 minuti in acqua bollente. Raffreddare e sgusciare.", "Sgocciolare molto bene il tonno dal suo olio.", "Sciacquare i capperi in acqua calda per eliminare il sale in eccesso.", "Nel Bimby frullare prima i capperi con una piccola parte di tonno.", "Aggiungere il restante tonno, le uova sode, la crème fraîche e la maionese. Frullare fino a salsa liscia.", "Conservare in buste sottovuoto da ca. 700 g l'una."], "porzioni": "Variabile", "tempo": "12 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto.", "allergeni": ["C (Uova)", "D (Pesce)", "G (Latte)", "N (Senape)"], "note": "", "foto": null}, {"id": 41, "nome": "Salsa OKO", "categoria": "Salse & Dressing", "emoji": "🫗", "ingredienti": [{"nome": "Ketchup", "quantità": "900 g"}, {"nome": "Sciroppo d'acero", "quantità": "200 g"}, {"nome": "Salsa di soia", "quantità": "700 g"}, {"nome": "Salsa Worcester", "quantità": "40 g"}], "procedimento": ["Mescolare tutti gli ingredienti.", "Dividere nei biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 30 giorni in frigorifero. Resa: 2 biberon grandi.", "allergeni": ["A (Glutine)", "D (Pesce)", "F (Soia)", "I (Anidride solforosa)"], "note": "", "foto": null}, {"id": 42, "nome": "Maionese Base", "categoria": "Maionesi", "emoji": "🥄", "ingredienti": [{"nome": "Tuorlo pastorizzato", "quantità": "300 g"}, {"nome": "Olio di semi di girasole", "quantità": "1 l"}, {"nome": "Succo di lime", "quantità": "50 g"}, {"nome": "Aceto di mele", "quantità": "20 g"}, {"nome": "Sale fino", "quantità": "10 g"}], "procedimento": ["Nel Bimby con la farfalla: tuorlo, succo di lime, aceto di mele e sale.", "Avviare a velocità 4.", "Aggiungere l'olio a filo lentamente, continuando a montare, fino a maionese densa e stabile.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero. Resa: 3 sac-à-poche.", "allergeni": ["C (Uova)", "N (Senape)"], "note": "", "foto": "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=400&h=300&fit=crop"}, {"id": 43, "nome": "Maionese al Wasabi", "categoria": "Maionesi", "emoji": "🥄", "ingredienti": [{"nome": "Maionese base (1 dose)", "quantità": "1 pz"}, {"nome": "Wasabi in polvere", "quantità": "50 g"}, {"nome": "Acqua", "quantità": "120 g"}, {"nome": "Colorante alimentare verde", "quantità": "q.b."}], "procedimento": ["Preparare la maionese base come da ricetta.", "Sciogliere il wasabi nell'acqua con il colorante per creare una pasta morbida.", "Aggiungere la pasta di wasabi alla maionese e montare ancora pochi secondi.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero. Resa: 3 sac-à-poche.", "allergeni": ["C (Uova)", "N (Senape)"], "note": "", "foto": null}, {"id": 44, "nome": "Maionese Asian", "categoria": "Maionesi", "emoji": "🥄", "ingredienti": [{"nome": "Maionese base SENZA SALE (1 dose)", "quantità": "1 pz"}, {"nome": "Salsa teriyaki", "quantità": "170 g"}, {"nome": "Olio di sesamo", "quantità": "30 g"}], "procedimento": ["Preparare la maionese base SENZA aggiungere il sale.", "Aggiungere la salsa teriyaki e l'olio di sesamo.", "Montare ancora pochi secondi fino a incorporare completamente.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero. Resa: 3 sac-à-poche.", "allergeni": ["A (Glutine)", "C (Uova)", "F (Soia)", "M (Sesamo)", "N (Senape)"], "note": "", "foto": null}, {"id": 45, "nome": "Maionese Sweet Chili", "categoria": "Maionesi", "emoji": "🥄", "ingredienti": [{"nome": "Maionese", "quantità": "2.400 g"}, {"nome": "Salsa sweet chili", "quantità": "800 g"}], "procedimento": ["Mescolare maionese e salsa sweet chili fino a composto omogeneo.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero. Resa: 5 sac-à-poche.", "allergeni": ["C (Uova)", "N (Senape)"], "note": "", "foto": null}, {"id": 46, "nome": "Maionese di Polpo", "categoria": "Maionesi", "emoji": "🥄", "ingredienti": [{"nome": "Acqua di cottura di polpo (ristretta)", "quantità": "300 g"}, {"nome": "Olio di semi di girasole", "quantità": "1 l"}, {"nome": "Succo di lime", "quantità": "50 g"}, {"nome": "Aceto di mele", "quantità": "20 g"}], "procedimento": ["Nel Bimby con la farfalla: acqua di polpo ristretta, succo di lime e aceto.", "Montare a velocità 4 aggiungendo l'olio a filo lentamente fino a maionese stabile.", "Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 10 giorni in frigorifero. Resa: 3 sac-à-poche.", "allergeni": ["N (Senape)", "P (Molluschi)"], "note": "", "foto": null}, {"id": 47, "nome": "Hummus di Ceci", "categoria": "Hummus & Vegetali", "emoji": "🌿", "ingredienti": [{"nome": "Ceci precotti — peso netto", "quantità": "1,5 kg (1 latta)"}, {"nome": "Olio extravergine d'oliva", "quantità": "200 g"}, {"nome": "Succo di lime", "quantità": "100 g"}, {"nome": "Acqua", "quantità": "400 g"}, {"nome": "Tahina", "quantità": "130 g"}, {"nome": "Cumino in polvere", "quantità": "7 g"}, {"nome": "Aglio in polvere", "quantità": "5 g"}, {"nome": "Cipolla in polvere", "quantità": "5 g"}, {"nome": "Sale fino", "quantità": "15 g"}], "procedimento": ["Nel Bimby: metà dei ceci, olio, lime, poca acqua, sale e tutte le spezie. Frullare al massimo.", "Trasferire in un contenitore grande.", "Nel Bimby: ceci rimanenti, acqua restante e tahina. Frullare al massimo.", "Unire le due parti. Mescolare bene. Regolare di sale.", "Aggiustare la consistenza aggiungendo acqua se necessario. Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 4 sac-à-poche.", "allergeni": ["M (Sesamo)"], "note": "", "foto": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=300&fit=crop"}, {"id": 48, "nome": "Hummus di Ceci e Paprika", "categoria": "Hummus & Vegetali", "emoji": "🌿", "ingredienti": [{"nome": "Ceci precotti — peso netto", "quantità": "1,5 kg (1 latta)"}, {"nome": "Olio extravergine d'oliva", "quantità": "200 g"}, {"nome": "Succo di lime", "quantità": "100 g"}, {"nome": "Acqua", "quantità": "400 g"}, {"nome": "Tahina", "quantità": "130 g"}, {"nome": "Cumino in polvere", "quantità": "7 g"}, {"nome": "Aglio in polvere", "quantità": "5 g"}, {"nome": "Cipolla in polvere", "quantità": "5 g"}, {"nome": "Sale fino", "quantità": "15 g"}], "procedimento": ["Procedere esattamente come per l'Hummus di Ceci base.", "NOTA: la paprika NON va aggiunta nell'impasto. Viene usata solo come decorazione al piatto al momento del servizio."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 4 sac-à-poche.", "allergeni": ["M (Sesamo)"], "note": "", "foto": null}, {"id": 49, "nome": "Hummus di Lenticchie e Curcuma", "categoria": "Hummus & Vegetali", "emoji": "🌿", "ingredienti": [{"nome": "Lenticchie precotte — peso netto", "quantità": "1,5 kg (1 latta)"}, {"nome": "Olio extravergine d'oliva", "quantità": "200 g"}, {"nome": "Succo di lime", "quantità": "100 g"}, {"nome": "Acqua", "quantità": "400 g"}, {"nome": "Tahina", "quantità": "130 g"}, {"nome": "Cumino in polvere", "quantità": "7 g"}, {"nome": "Curcuma in polvere", "quantità": "15 g"}, {"nome": "Aglio in polvere", "quantità": "5 g"}, {"nome": "Cipolla in polvere", "quantità": "5 g"}, {"nome": "Sale fino", "quantità": "15 g"}], "procedimento": ["Stessa procedura dell'Hummus di Ceci, sostituendo i ceci con le lenticchie e aggiungendo la curcuma nel primo step.", "Nel Bimby: metà lenticchie, olio, lime, poca acqua, sale, tutte le spezie e la curcuma. Frullare al massimo.", "Nel Bimby: lenticchie restanti, acqua restante e tahina. Frullare al massimo.", "Unire le due parti. Regolare di sale. Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 4 sac-à-poche.", "allergeni": ["M (Sesamo)"], "note": "", "foto": null}, {"id": 50, "nome": "Hummus di Piselli e Menta", "categoria": "Hummus & Vegetali", "emoji": "🌿", "ingredienti": [{"nome": "Piselli secchi", "quantità": "1 kg"}, {"nome": "Olio extravergine d'oliva", "quantità": "160 g"}, {"nome": "Succo di lime", "quantità": "100 g"}, {"nome": "Acqua (più acqua di cottura se necessario)", "quantità": "350 g"}, {"nome": "Tahina", "quantità": "60 g"}, {"nome": "Menta fresca", "quantità": "50 g"}, {"nome": "Aglio in polvere", "quantità": "5 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Cuocere i piselli in 3 l di acqua. ATTENZIONE: non cuocere troppo, altrimenti si sciolgono. Scolare al dente.", "Nel Bimby: menta, olio, lime, poca acqua, sale e spezie. Frullare al massimo.", "Aggiungere metà dei piselli. Continuare a frullare. Trasferire in contenitore grande.", "Nel Bimby: piselli restanti, acqua restante e tahina. Frullare al massimo.", "Unire le due parti. Regolare di sale e consistenza. Dividere nelle sac-à-poche."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Resa: 4 sac-à-poche. Tempo cottura piselli: ca. 40 min.", "allergeni": ["M (Sesamo)"], "note": "", "foto": null}, {"id": 51, "nome": "Babaganoush", "categoria": "Hummus & Vegetali", "emoji": "🍆", "ingredienti": [{"nome": "Melanzane (peso lordo)", "quantità": "3,5 kg"}, {"nome": "Olio extravergine d'oliva", "quantità": "90 g"}, {"nome": "Aglio in polvere", "quantità": "4 g"}, {"nome": "Succo di lime", "quantità": "10 g"}, {"nome": "Menta fresca", "quantità": "abbondante"}, {"nome": "Tahina", "quantità": "100 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["MELANZANE — Lavare le melanzane intere e disporle in teglia. Cuocere a 150 °C per 50–60 minuti.", "Abbattere in positivo. Quando fredde, pelarle e strizzarle bene. Si ottengono ca. 2 kg di purea.", "BABAGANOUSH — Nel Bimby frullare tutti gli ingredienti tranne la tahina e la purea di melanzane.", "Aggiungere la purea di melanzane e frullare.", "Aggiungere la tahina e amalgamare. Regolare di sale e pepe.", "Conservare sottovuoto in buste da ca. 700 g l'una."], "porzioni": "Variabile", "tempo": "60 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto. Per grandi quantità: è possibile abbattere una parte.", "allergeni": ["M (Sesamo)"], "note": "", "foto": "https://images.unsplash.com/photo-1571197119282-7c4e2b4eb4d6?w=400&h=300&fit=crop"}, {"id": 52, "nome": "Rösti di Patate", "categoria": "Verdure & Contorni", "emoji": "🥔", "ingredienti": [{"nome": "Patate lesse a cubetti", "quantità": "2 kg"}, {"nome": "Cipollotto fresco tritato", "quantità": "q.b."}, {"nome": "Rosmarino tritato", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Unire tutti gli ingredienti e creare un impasto compatto.", "Conservare in contenitore ermetico in frigorifero.", "AL SERVIZIO — Formare una \"polpetta\" schiacciata. Cuocere in piastra con abbondante olio su entrambi i lati fino a doratura."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 3 giorni in frigorifero. Da cuocere sempre al momento del servizio.", "allergeni": [], "note": "", "foto": null}, {"id": 53, "nome": "Asparagi Croccanti (Sbollentati)", "categoria": "Verdure & Contorni", "emoji": "🌿", "ingredienti": [{"nome": "Asparagi bianchi", "quantità": "q.b."}, {"nome": "Asparagi verdi", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Tagliare gli asparagi in diagonale per ottenere fettine lunghe e spesse qualche mm. Tenere i due tipi separati.", "Sbollentare gli asparagi bianchi in acqua salata bollente per 3 minuti. Raffreddare in acqua e ghiaccio.", "Ripetere con gli asparagi verdi.", "Scolare bene, unire i due tipi e condire con poco pepe, un filo di olio evo e sale.", "Confezionare in sacchetti sottovuoto da ca. 400 g."], "porzioni": "Variabile", "tempo": "3 min", "difficolta": "Media", "shelf_life": "Shelf life: 4 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 54, "nome": "Cipolla Stufata Alla Birra", "categoria": "Verdure & Contorni", "emoji": "🧅", "ingredienti": [{"nome": "Cipolla dorata", "quantità": "15 kg"}, {"nome": "Birra senza glutine", "quantità": "2 l"}, {"nome": "Olio di girasole", "quantità": "300 g"}, {"nome": "Aglio in polvere", "quantità": "10 g"}, {"nome": "Rosmarino secco", "quantità": "25 g"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Tagliare le cipolle a julienne molto fini.", "Rosolare la cipolla in pentola con l'olio. Aggiungere tutti gli altri ingredienti.", "Cuocere a fuoco medio-basso fino a completa cottura e colorazione dorata.", "Far raffreddare. Confezionare in sacchetti sottovuoto."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero. Per grandi quantità: abbattere una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 55, "nome": "Zucca al Forno", "categoria": "Verdure & Contorni", "emoji": "🎃", "ingredienti": [{"nome": "Zucca violino", "quantità": "ca. 1 pz"}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Tagliare la zucca in cerchi larghi ca. 5 cm, poi a metà per ottenere \"mezzelune\". Lasciare la buccia, eliminare i semi.", "Disporre in teglia con carta forno, buccia rivolta verso il basso. Condire con sale e pepe.", "Cuocere a 150 °C per 45 minuti, senza liquidi.", "Far raffreddare. Rimuovere la buccia cercando di mantenere i pezzi interi.", "Confezionare ca. 6 pezzi per busta sottovuoto."], "porzioni": "Variabile", "tempo": "45 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Per grandi quantità: abbattere una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 56, "nome": "Cappuccio Viola Agrodolce", "categoria": "Verdure & Contorni", "emoji": "🥬", "ingredienti": [{"nome": "Cappuccio viola (ca. 1 pz grande)", "quantità": "800 g"}, {"nome": "Aceto di mele", "quantità": "100 g"}, {"nome": "Zucchero semolato", "quantità": "10 g"}, {"nome": "Sale fino", "quantità": "q.b."}], "procedimento": ["Tagliare il cappuccio viola molto fino con la mandolina.", "Aggiungere aceto, zucchero e sale. Mescolare bene e lasciare macerare."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 4 giorni in frigorifero.", "allergeni": ["N (Senape)"], "note": "", "foto": null}, {"id": 57, "nome": "Cipolla Rossa Agrodolce", "categoria": "Verdure & Contorni", "emoji": "🧅", "ingredienti": [{"nome": "Cipolla rossa", "quantità": "5 kg"}, {"nome": "Aceto di mele", "quantità": "1,5 l"}, {"nome": "Acqua", "quantità": "1,5 l"}, {"nome": "Sale fino", "quantità": "48 g"}, {"nome": "Zucchero semolato", "quantità": "300 g"}], "procedimento": ["Tagliare le cipolle a petali e sgranare bene.", "Disporre in un contenitore di plastica con tappo.", "In pentola: portare a bollore aceto, acqua, sale e zucchero.", "Versare il liquido bollente sulle cipolle. Lasciare raffreddare completamente.", "Il giorno seguente confezionare in sacchetti da conservazione."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 30 giorni in frigorifero.", "allergeni": ["N (Senape)"], "note": "", "foto": null}, {"id": 58, "nome": "Radicchio di Treviso Agrodolce", "categoria": "Verdure & Contorni", "emoji": "🥬", "ingredienti": [{"nome": "Radicchio di Treviso", "quantità": "5 kg"}, {"nome": "Aceto di mele", "quantità": "0,9 l"}, {"nome": "Acqua", "quantità": "1,5 l"}, {"nome": "Sale fino", "quantità": "36 g"}, {"nome": "Zucchero semolato", "quantità": "420 g"}], "procedimento": ["Tagliare il radicchio lasciando le foglie il più lunghe possibili. Lavare bene.", "In pentola: portare a bollore aceto, acqua, sale e zucchero.", "Sbollentare il radicchio nel liquido per 1 minuto. Far raffreddare separatamente il radicchio e il liquido.", "Quando tutto è freddo, confezionare il radicchio con un po' di liquido nei sacchetti sottovuoto."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 30 giorni in frigorifero.", "allergeni": ["N (Senape)"], "note": "", "foto": null}, {"id": 59, "nome": "Carciofi CBT", "categoria": "Verdure & Contorni", "emoji": "🌿", "ingredienti": [{"nome": "Carciofi (1 pz per sacchetto)", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Pulire il carciofo: ricavare solo il cuore e il gambo. Tagliare il cuore a metà e il gambo a metà in lunghezza.", "Confezionare in buste sottovuoto da cottura con olio evo, sale e pepe. Sigillare.", "Cuocere in roner o forno a vapore a 90 °C per 45 minuti."], "porzioni": "Variabile", "tempo": "45 min", "difficolta": "Facile", "shelf_life": "Shelf life: 15 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 60, "nome": "Pomodorini Confit", "categoria": "Verdure & Contorni", "emoji": "🍅", "ingredienti": [{"nome": "Pomodorini rossi", "quantità": "q.b."}, {"nome": "Pomodorini gialli", "quantità": "q.b."}, {"nome": "Zucchero a velo", "quantità": "abbondante"}, {"nome": "Timo fresco o secco", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Sgranare e lavare i pomodorini.", "Disporli in teglia su uno strato unico, senza sovrapporli.", "Condire con sale, pepe, timo e abbondante zucchero a velo.", "Cuocere in forno a 150 °C per 45 minuti.", "Abbattere in positivo. Confezionare in buste sottovuoto."], "porzioni": "Variabile", "tempo": "45 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto.", "allergeni": [], "note": "", "foto": null}, {"id": 61, "nome": "Peperoni Arrostiti", "categoria": "Verdure & Contorni", "emoji": "🫑", "ingredienti": [{"nome": "Peperoni rossi", "quantità": "q.b."}, {"nome": "Peperoni gialli", "quantità": "q.b."}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Prezzemolo fresco tritato", "quantità": "q.b."}, {"nome": "Aglio fresco (pochissimo)", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["Lavare i peperoni. Disporli interi in teglia. Cuocere a 150 °C per 45 minuti.", "Mettere subito in contenitore chiuso e lasciare stemperare (non raffreddare del tutto).", "Quando non troppo caldi, pelarli mantenendo i filetti il più grandi possibili.", "Condire con sale, pepe, olio evo, pochissimo aglio e prezzemolo.", "Confezionare in buste miste (rossi + gialli). Sigillare."], "porzioni": "Variabile", "tempo": "45 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero.", "allergeni": [], "note": "", "foto": null}, {"id": 62, "nome": "Crema di Fave", "categoria": "Verdure & Contorni", "emoji": "🫘", "ingredienti": [{"nome": "Fave secche", "quantità": "5 kg"}, {"nome": "Cipolla stufata alla birra", "quantità": "100 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Acqua", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["In pentola alta e capiente, soffriggere la cipolla stufata con olio evo.", "Aggiungere le fave e rosolare per qualche minuto.", "Coprire con acqua fino a ca. 5 cm sopra le fave. Cuocere ca. 45 minuti mescolando spesso.", "Le fave sono pronte quando sono morbide e iniziano a rompersi.", "Frullare prima con il minipimer nella pentola, poi nel Bimby. La crema deve essere densa.", "Aggiustare di sale e pepe. Abbattere in positivo.", "Confezionare in buste sottovuoto da ca. 1.200 g l'una."], "porzioni": "Variabile", "tempo": "45 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 63, "nome": "Crema di Piselli", "categoria": "Verdure & Contorni", "emoji": "🌱", "ingredienti": [{"nome": "Piselli surgelati", "quantità": "5 kg"}, {"nome": "Cipolla stufata alla birra", "quantità": "100 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Acqua", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}, {"nome": "Pepe nero", "quantità": "q.b."}], "procedimento": ["In pentola alta e capiente, soffriggere la cipolla stufata con olio evo.", "Aggiungere i piselli e rosolare per qualche minuto.", "Aggiungere acqua fino a ca. 5 cm sotto il livello dei piselli. Cuocere ca. 30 minuti.", "Frullare prima con il minipimer nella pentola, poi nel Bimby. La crema deve essere densa.", "Aggiustare di sale e pepe. Abbattere in positivo.", "Confezionare in buste sottovuoto da ca. 500 g l'una."], "porzioni": "Variabile", "tempo": "30 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto. Per grandi quantità: congelare una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 64, "nome": "Dhal di Lenticchie", "categoria": "Verdure & Contorni", "emoji": "🫘", "ingredienti": [{"nome": "Lenticchie precotte — peso netto", "quantità": "1,5 kg (1 latta)"}, {"nome": "Cipolla stufata", "quantità": "50 g"}, {"nome": "Latte di cocco", "quantità": "800 g"}, {"nome": "Pasta di curry", "quantità": "75 g"}, {"nome": "Curcuma in polvere", "quantità": "3 g"}, {"nome": "Olio extravergine d'oliva", "quantità": "q.b."}, {"nome": "Sale", "quantità": "q.b."}], "procedimento": ["Scolare e sciacquare bene le lenticchie.", "In casseruola, rosolare la cipolla stufata con un filo di olio a fuoco medio-alto.", "Aggiungere le lenticchie e rosolare brevemente.", "Aggiungere pasta di curry, curcuma e latte di cocco. Cuocere a fuoco medio fino a giusta consistenza.", "Stendere il dhal su teglia e abbattere in positivo.", "Dividere in due sacchetti sottovuoto."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero sottovuoto. NON congelare.", "allergeni": ["H (Frutta secca)"], "note": "", "foto": null}, {"id": 65, "nome": "Zenzero Pastorizzato", "categoria": "Verdure & Contorni", "emoji": "🌿", "ingredienti": [{"nome": "Zenzero fresco (pelato)", "quantità": "500 g"}, {"nome": "Succo di lime", "quantità": "30 g"}, {"nome": "Olio di girasole", "quantità": "100 g"}, {"nome": "Sale", "quantità": "q.b."}], "procedimento": ["Pulire lo zenzero.", "Nel Bimby: tutti gli ingredienti. Frullare al massimo.", "Cuocere a 90 °C per 40 minuti a velocità 2.", "A cottura ultimata, frullare ancora al massimo.", "Confezionare in sacchetti sottovuoto piccoli."], "porzioni": "Variabile", "tempo": "40 min", "difficolta": "Media", "shelf_life": "Shelf life: 30 giorni in frigorifero sottovuoto.", "allergeni": [], "note": "", "foto": null}, {"id": 66, "nome": "Mix Spezie Crostini", "categoria": "Mix Spezie", "emoji": "🍞", "ingredienti": [{"nome": "Sale fino", "quantità": "10% del peso totale"}, {"nome": "Prezzemolo secco in polvere", "quantità": "10 g"}, {"nome": "Origano secco in polvere", "quantità": "20 g"}, {"nome": "Timo secco in polvere", "quantità": "20 g"}, {"nome": "Rosmarino secco in polvere", "quantità": "20 g"}, {"nome": "Maggiorana secca in polvere", "quantità": "10 g"}, {"nome": "Pepe nero in polvere", "quantità": "10 g"}, {"nome": "Curcuma in polvere", "quantità": "20 g"}, {"nome": "Paprika dolce in polvere", "quantità": "20 g"}, {"nome": "Paprika forte in polvere", "quantità": "20 g"}], "procedimento": ["Assicurarsi che tutti gli ingredienti siano ridotti in polvere fine.", "Pesare accuratamente ogni ingrediente.", "Mescolare tutto fino a blend omogeneo.", "Conservare in contenitore ermetico, lontano da luce e umidità."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 mesi in contenitore ermetico lontano da fonti di calore.", "allergeni": [], "note": "", "foto": null}, {"id": 67, "nome": "Mix Spezie Salsa Home", "categoria": "Mix Spezie", "emoji": "🫗", "ingredienti": [{"nome": "Sale fino", "quantità": "10% del peso totale"}, {"nome": "Cumino in polvere", "quantità": "20 g"}, {"nome": "Coriandolo in polvere", "quantità": "30 g"}, {"nome": "Cannella in polvere", "quantità": "20 g"}, {"nome": "Zenzero in polvere", "quantità": "20 g"}, {"nome": "Pepe nero in polvere", "quantità": "20 g"}, {"nome": "Curcuma in polvere", "quantità": "20 g"}, {"nome": "Cardamomo in polvere", "quantità": "6 g"}, {"nome": "Chiodi di garofano in polvere", "quantità": "8 g"}], "procedimento": ["Assicurarsi che tutti gli ingredienti siano in polvere fine.", "Pesare e mescolare tutti gli ingredienti accuratamente.", "Conservare in contenitore ermetico."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 6 mesi in contenitore ermetico lontano da fonti di calore.", "allergeni": [], "note": "", "foto": null}, {"id": 68, "nome": "Mix Spezie Vin Brulé", "categoria": "Mix Spezie", "emoji": "🍷", "ingredienti": [{"nome": "Chiodi di garofano in polvere", "quantità": "50 g"}, {"nome": "Cannella in polvere", "quantità": "200 g"}, {"nome": "Arancia in polvere", "quantità": "70 g"}, {"nome": "Noce moscata in polvere", "quantità": "10 g"}, {"nome": "Pepe nero in polvere", "quantità": "50 g"}], "procedimento": ["Macinare finemente tutti gli ingredienti.", "Mescolare accuratamente fino a blend omogeneo.", "UTILIZZO: questa dose (380 g totali) viene frullata con 1 kg di zucchero semolato per ottenere lo Zucchero Speziato Vin Brulé."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Shelf life: 6 mesi in contenitore ermetico. Resa: 380 g di mix spezie.", "allergeni": [], "note": "", "foto": null}, {"id": 69, "nome": "Mix Spezie Pulled", "categoria": "Mix Spezie", "emoji": "🌶", "ingredienti": [{"nome": "Aglio in polvere", "quantità": "20 g"}, {"nome": "Pepe nero in polvere", "quantità": "10 g"}, {"nome": "Fieno greco in polvere", "quantità": "40 g"}, {"nome": "Paprika affumicata", "quantità": "60 g"}, {"nome": "Paprika dolce", "quantità": "30 g"}, {"nome": "Paprika forte", "quantità": "30 g"}, {"nome": "Carvi (cumino selvatico) in polvere", "quantità": "20 g"}, {"nome": "Cumino in polvere", "quantità": "30 g"}, {"nome": "Origano secco", "quantità": "70 g"}, {"nome": "Zenzero in polvere", "quantità": "10 g"}, {"nome": "Anice stellato (½ pz macinato)", "quantità": "q.b."}, {"nome": "Chiodi di garofano (4 pz macinati)", "quantità": "q.b."}, {"nome": "Peperoncino di Cayenna", "quantità": "2 pz"}], "procedimento": ["Macinare finemente: anice stellato, chiodi di garofano e peperoncino.", "Pesare e mescolare tutti gli ingredienti accuratamente.", "Conservare in contenitore ermetico."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Difficile", "shelf_life": "Shelf life: 6 mesi in contenitore ermetico. Usato per il Pulled Pork.", "allergeni": [], "note": "", "foto": null}, {"id": 70, "nome": "Crumble Timo e Limone", "categoria": "Dolci & Creme Dolci", "emoji": "🍋", "ingredienti": [{"nome": "Farina tipo \"00\"", "quantità": "1 kg"}, {"nome": "Burro morbido (temperatura ambiente)", "quantità": "800 g"}, {"nome": "Zucchero di canna", "quantità": "800 g"}, {"nome": "Limoni (solo la buccia grattugiata)", "quantità": "4 pz"}, {"nome": "Timo secco", "quantità": "20 g"}], "procedimento": ["In planetaria con l'arpa (foglia): tutti gli ingredienti insieme.", "Mescolare a media velocità fino a briciole grossolane omogenee.", "Finire a mano formando una palla compatta.", "Stendere su tre teglie rivestite con carta da forno.", "Cuocere a 180 °C per 10 minuti. Con una spatola, spostare e allargare il crumble.", "Cuocere altri 10 minuti a 180 °C fino a doratura.", "Far raffreddare completamente. Dividere in 6 sacchetti sottovuoto."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Media", "shelf_life": "Produzione: 2 giorni in frigorifero. In servizio: 6 giorni fuori frigo in contenitore ermetico.", "allergeni": ["A (Glutine)", "G (Latte)"], "note": "", "foto": null}, {"id": 71, "nome": "Crema Cheese Cake", "categoria": "Dolci & Creme Dolci", "emoji": "🍰", "ingredienti": [{"nome": "Panna da montare", "quantità": "400 g"}, {"nome": "Formaggio fresco Debic", "quantità": "500 g"}, {"nome": "Colla di pesce (gelatina in fogli)", "quantità": "8 g"}, {"nome": "Panna (per sciogliere la gelatina)", "quantità": "100 g"}, {"nome": "Zucchero a velo", "quantità": "30 g"}, {"nome": "Limone (solo buccia grattugiata)", "quantità": "1 pz"}, {"nome": "Vaniglia (estratto)", "quantità": "q.b."}], "procedimento": ["Ammollare la colla di pesce in acqua fredda per ca. 10 minuti.", "Nel Bimby con la farfalla, montare i 400 g di panna al 70% (semi-montata).", "Nel frattempo, scaldare i 100 g di panna e sciogliervi la colla di pesce ben strizzata.", "Alla panna semi-montata aggiungere: formaggio, buccia di limone, vaniglia e zucchero a velo. Amalgamare delicatamente.", "Aggiungere la panna con la gelatina. Amalgamare con cura.", "Dividere in due sac-à-poche con beccuccio rigato in acciaio."], "porzioni": "Variabile", "tempo": "10 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 72, "nome": "Crema al Limone", "categoria": "Dolci & Creme Dolci", "emoji": "🍋", "ingredienti": [{"nome": "Tuorlo pastorizzato", "quantità": "220 g"}, {"nome": "Zucchero semolato", "quantità": "250 g"}, {"nome": "Farina tipo \"00\"", "quantità": "80 g"}, {"nome": "Maizena", "quantità": "40 g"}, {"nome": "Latte intero", "quantità": "1 l"}, {"nome": "Panna fresca", "quantità": "50 g"}, {"nome": "Limone in polvere Wiberg", "quantità": "15 g"}, {"nome": "Lime (solo buccia grattugiata)", "quantità": "2 pz"}], "procedimento": ["Nel Bimby con la farfalla: montare tuorlo e zucchero a velocità 3 per 4 minuti.", "Aggiungere la farina e la maizena. Montare 1 minuto.", "Aggiungere il latte e la polvere di limone. Cuocere a 100 °C per 15 minuti.", "Trasferire in contenitore e abbattere in positivo.", "Quando fredda, aggiungere la panna e la buccia di lime. Mescolare con frusta a mano.", "Trasferire nei biberon."], "porzioni": "Variabile", "tempo": "4 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero.", "allergeni": ["A (Glutine)", "C (Uova)", "G (Latte)"], "note": "", "foto": null}, {"id": 73, "nome": "Ricotta Dolce", "categoria": "Dolci & Creme Dolci", "emoji": "🧀", "ingredienti": [{"nome": "Ricotta fresca", "quantità": "500 g"}, {"nome": "Zucchero a velo", "quantità": "50 g"}, {"nome": "Limone (solo buccia grattugiata)", "quantità": "1 pz"}], "procedimento": ["Setacciare lo zucchero a velo.", "Grattugiare finemente la buccia del limone.", "Nel Bimby con la farfalla: ricotta, zucchero e buccia di limone.", "Montare a velocità 3 per 2 minuti fino a crema soffice e omogenea.", "Dividere in due sac-à-poche."], "porzioni": "Variabile", "tempo": "2 min", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 74, "nome": "Zucchero Speziato Vin Brulé", "categoria": "Dolci & Creme Dolci", "emoji": "🍷", "ingredienti": [{"nome": "Zucchero semolato", "quantità": "1 kg"}, {"nome": "Mix spezie vin brulé", "quantità": "100 g"}], "procedimento": ["Nel Bimby: zucchero e mix spezie.", "Frullare fino a ottenere quasi la consistenza di uno zucchero a velo aromatizzato.", "Conservare in contenitore ermetico."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Facile", "shelf_life": "Base per la Salsa Vin Brulé. Conservare in luogo fresco e asciutto.", "allergeni": [], "note": "", "foto": null}, {"id": 75, "nome": "Salsa Vin Brulé", "categoria": "Dolci & Creme Dolci", "emoji": "🍷", "ingredienti": [{"nome": "Vino rosso Merlot", "quantità": "12 l"}, {"nome": "Zucchero speziato vin brulé", "quantità": "1.100 g"}, {"nome": "Arance (ca. 3 pz)", "quantità": "750 g"}, {"nome": "Burro", "quantità": "200 g"}, {"nome": "Xantana", "quantità": "50 g"}], "procedimento": ["In pentola capiente portare il vino a bollore a massima potenza.", "Quando bolle, flambare e abbassare la fiamma. Ridurre fino a ca. 9 l.", "Aggiungere le arance tagliate a metà e spremute, e lo zucchero speziato.", "Cuocere a fuoco medio per altri 20 minuti.", "Eliminare le arance. Aggiungere xantana e burro. Frullare con il frullatore a immersione.", "Setacciare la salsa e far raffreddare.", "Confezionare in sacchetti sottovuoto da ca. 600 g l'uno."], "porzioni": "Variabile", "tempo": "20 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Per grandi quantità: congelare una parte.", "allergeni": ["G (Latte)", "N (Senape)"], "note": "", "foto": null}, {"id": 76, "nome": "Salsa Ai Lamponi", "categoria": "Dolci & Creme Dolci", "emoji": "🫐", "ingredienti": [{"nome": "Lamponi surgelati", "quantità": "3 kg"}, {"nome": "Zucchero semolato", "quantità": "500 g"}, {"nome": "Acqua", "quantità": "50 g"}, {"nome": "Xantana", "quantità": "15 g"}], "procedimento": ["In pentola sciogliere lo zucchero con l'acqua a fuoco medio, senza farlo brunire.", "Alzare leggermente la fiamma, aggiungere i lamponi.", "Cuocere per ca. 20 minuti.", "Aggiungere la xantana e frullare tutto.", "Setacciare bene per eliminare tutti i semi.", "Far raffreddare. Confezionare in sacchetti sottovuoto da ca. 600 g l'uno."], "porzioni": "Variabile", "tempo": "20 min", "difficolta": "Media", "shelf_life": "Shelf life: 6 giorni in frigorifero. Per grandi produzioni: congelare una parte.", "allergeni": [], "note": "", "foto": null}, {"id": 77, "nome": "Salsa Caffè", "categoria": "Dolci & Creme Dolci", "emoji": "☕", "ingredienti": [{"nome": "Caffè espresso (ca. 9 caffè)", "quantità": "200 g"}, {"nome": "Acqua", "quantità": "220 g"}, {"nome": "Zucchero semolato", "quantità": "20 g"}, {"nome": "Maizena", "quantità": "10 g"}], "procedimento": ["Preparare il caffè espresso.", "In casseruola: caffè, zucchero e 200 g di acqua. Portare a bollore.", "A parte: sciogliere la maizena nei restanti 20 g di acqua fredda.", "Versare la maizena nella pentola bollente. Cuocere qualche minuto mescolando con frusta fino ad addensare.", "Far raffreddare. Trasferire nel biberon."], "porzioni": "Variabile", "tempo": "Variabile", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero. Resa: 1 biberon medio.", "allergeni": [], "note": "", "foto": null}, {"id": 78, "nome": "Spuma al Caffè", "categoria": "Dolci & Creme Dolci", "emoji": "🍰", "ingredienti": [{"nome": "Panna fresca", "quantità": "250 g"}, {"nome": "Latte UHT intero", "quantità": "250 g"}, {"nome": "Polvere caffè Illy Crema", "quantità": "165 g"}], "procedimento": ["Con il frullatore a immersione: sciogliere la polvere di caffè nel latte.", "Aggiungere la panna e mescolare.", "Versare nel sifone da 1 litro. Inserire 2 capsule di gas.", "Lasciare riposare in frigorifero per 24 ore prima dell'uso.", "Agitare molto bene prima di ogni utilizzo."], "porzioni": "Variabile", "tempo": "24h marinatura", "difficolta": "Media", "shelf_life": "Shelf life: 7 giorni in frigorifero. Agitare sempre prima dell'uso. Resa: 1 sifone da 1 litro.", "allergeni": ["G (Latte)"], "note": "", "foto": null}, {"id": 79, "nome": "Spuma al Mascarpone", "categoria": "Dolci & Creme Dolci", "emoji": "🍰", "ingredienti": [{"nome": "Tuorlo pastorizzato", "quantità": "300 g"}, {"nome": "Miele", "quantità": "210 g"}, {"nome": "Sale", "quantità": "1 pizzico"}, {"nome": "Latte intero", "quantità": "500 g"}, {"nome": "Panna fresca", "quantità": "700 g"}, {"nome": "Mascarpone", "quantità": "500 g"}], "procedimento": ["Nel Bimby con la farfalla: montare tuorlo, sale e miele a velocità 3 per 4 minuti.", "Aggiungere latte e panna. Cuocere a 90 °C per 15 minuti.", "Aggiungere il mascarpone e mescolare a velocità bassa per qualche minuto.", "Far raffreddare. Confezionare in sacchetti sottovuoto da ca. 750 g l'uno.", "AL SERVIZIO — Caricare il sifone da 1 litro con una busta di crema e 2 capsule di gas."], "porzioni": "Variabile", "tempo": "4 min", "difficolta": "Media", "shelf_life": "Shelf life: 8 giorni in frigorifero. Resa: sacchetti da ca. 750 g.", "allergeni": ["C (Uova)", "G (Latte)"], "note": "", "foto": null}];
+        let currentRecipe = null;
+        let doseMultiplier = 1;
+
+        function init() {
+            populateCategories();
+            renderRicette(ricette);
+            updateStats(ricette.length);
+            document.getElementById('searchInput').addEventListener('input', filter);
+            document.getElementById('categoryFilter').addEventListener('change', filter);
+            document.getElementById('difficultyFilter').addEventListener('change', filter);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        }
+
+        function populateCategories() {
+            const cats = [...new Set(ricette.map(r => r.categoria))].sort();
+            const sel = document.getElementById('categoryFilter');
+            cats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                sel.appendChild(opt);
+            });
+        }
+
+        function renderRicette(list) {
+            const grid = document.getElementById('ricetteGrid');
+            grid.innerHTML = '';
+            if (list.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('shownCount').textContent = '0';
+                return;
+            }
+            document.getElementById('emptyState').style.display = 'none';
+
+            list.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => openModal(r);
+                const diffClass = r.difficolta.toLowerCase().includes('facile') ? 'diff-facile' :
+                                  r.difficolta.toLowerCase().includes('difficile') ? 'diff-difficile' : 'diff-media';
+                const imageContent = r.foto
+                    ? `<img src="${r.foto}" alt="${r.nome}" loading="lazy" onerror="this.parentElement.classList.add('no-photo'); this.outerHTML='<span class=\'card-emoji\'>${r.emoji}</span>'">`
+                    : `<span class="card-emoji">${r.emoji}</span>`;
+                const imageClass = r.foto ? 'card-image' : 'card-image no-photo';
+                card.innerHTML = `
+                    <div class="${imageClass}">${imageContent}</div>
+                    <div class="card-body">
+                        <div class="card-category">${r.categoria}</div>
+                        <div class="card-title">${r.nome}</div>
+                        <div class="card-meta">
+                            <span class="difficulty ${diffClass}">${r.difficolta}</span>
+                            <span class="meta-tag">⏱ ${r.tempo}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            document.getElementById('shownCount').textContent = list.length;
+        }
+
+        function filter() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const cat = document.getElementById('categoryFilter').value;
+            const diff = document.getElementById('difficultyFilter').value;
+
+            const filtered = ricette.filter(r => {
+                const matchSearch = !q || r.nome.toLowerCase().includes(q) ||
+                    r.categoria.toLowerCase().includes(q) ||
+                    r.ingredienti.some(i => i.nome.toLowerCase().includes(q));
+                const matchCat = !cat || r.categoria === cat;
+                const matchDiff = !diff || r.difficolta === diff;
+                return matchSearch && matchCat && matchDiff;
+            });
+            renderRicette(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('difficultyFilter').value = '';
+            renderRicette(ricette);
+        }
+
+        function openModal(r) {
+            currentRecipe = r;
+            doseMultiplier = 1;
+
+            document.getElementById('modalCategory').textContent = r.categoria;
+            document.getElementById('modalTitle').textContent = r.nome;
+            const hero = document.getElementById('modalHero');
+            if (r.foto) {
+                hero.style.backgroundImage = `url('${r.foto}')`;
+                hero.style.backgroundSize = 'cover';
+                hero.style.backgroundPosition = 'center';
+                hero.classList.remove('no-photo');
+                document.getElementById('modalHeroEmoji').style.display = 'none';
+            } else {
+                hero.style.backgroundImage = '';
+                hero.classList.add('no-photo');
+                const emojiEl = document.getElementById('modalHeroEmoji');
+                emojiEl.textContent = r.emoji;
+                emojiEl.style.display = 'flex';
+            }
+
+            renderModalBody();
+            document.getElementById('modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function renderModalBody() {
+            const r = currentRecipe;
+            const allergensHtml = r.allergeni.length > 0
+                ? `<div class="allergens-banner">⚠️ <strong>Allergeni:</strong> ${r.allergeni.join(', ')}</div>` : '';
+            const shelfHtml = r.shelf_life
+                ? `<div class="shelf-banner">📦 <span><strong>Conservazione:</strong> ${r.shelf_life}</span></div>` : '';
+
+            const ingredientsHtml = r.ingredienti.map(i => {
+                if (i.nome.startsWith('—') || i.nome.startsWith('--')) {
+                    return `<li class="ingredient section-divider">${i.nome.replace(/—/g, '').trim()}</li>`;
+                }
+                const qty = scaleQuantity(i.quantità, doseMultiplier);
+                return `<li class="ingredient"><span class="ingredient-name">${i.nome}</span><span class="ingredient-qty">${qty}</span></li>`;
+            }).join('');
+
+            const procedimentoHtml = r.procedimento.map(s => `<li>${s}</li>`).join('');
+
+            document.getElementById('modalBody').innerHTML = `
+                ${allergensHtml}
+                ${shelfHtml}
+                <div class="info-row">
+                    <div class="info-box"><div class="info-label">Difficoltà</div><div class="info-value">${r.difficolta}</div></div>
+                    <div class="info-box"><div class="info-label">Tempo</div><div class="info-value">${r.tempo}</div></div>
+                    <div class="info-box"><div class="info-label">Porzioni</div><div class="info-value">${r.porzioni}</div></div>
+                </div>
+                <div class="section">
+                    <div class="section-title">
+                        <span>🥘 Ingredienti</span>
+                        <div class="dose-controls">
+                            <span>Dosi:</span>
+                            <button class="dose-btn" onclick="changeDose(-1)">−</button>
+                            <span class="dose-value">${doseMultiplier}x</span>
+                            <button class="dose-btn" onclick="changeDose(1)">+</button>
+                        </div>
+                    </div>
+                    <ul class="ingredients-list">${ingredientsHtml}</ul>
+                </div>
+                <div class="section">
+                    <div class="section-title"><span>👨‍🍳 Procedimento</span></div>
+                    <ol class="procedimento">${procedimentoHtml}</ol>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="exportPDF()">📄 Esporta PDF</button>
+                    <button class="btn" onclick="window.print()">🖨️ Stampa</button>
+                    <button class="btn" onclick="closeModal()">Chiudi</button>
+                </div>
+            `;
+        }
+
+        function changeDose(delta) {
+            const newVal = doseMultiplier + delta * 0.5;
+            if (newVal >= 0.5 && newVal <= 10) {
+                doseMultiplier = newVal;
+                renderModalBody();
+            }
+        }
+
+        function scaleQuantity(qty, mult) {
+            if (mult === 1 || !qty) return qty;
+            // Trova numeri e li moltiplica
+            return qty.replace(/(\d+(?:[.,]\d+)?)/g, (match) => {
+                const num = parseFloat(match.replace(',', '.'));
+                const scaled = num * mult;
+                const formatted = scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1).replace('.', ',');
+                return formatted;
+            });
+        }
+
+        function closeModalOnOverlay(e) {
+            if (e.target.id === 'modal') closeModal();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function exportPDF() {
+            const r = currentRecipe;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            let y = 20;
+            const pageW = 210, margin = 20, contentW = pageW - 2 * margin;
+
+            // Header
+            doc.setFontSize(10).setTextColor(194, 65, 12);
+            doc.text(r.categoria.toUpperCase(), margin, y);
+            y += 7;
+            doc.setFontSize(20).setTextColor(26, 26, 26).setFont(undefined, 'bold');
+            const titleLines = doc.splitTextToSize(r.nome, contentW);
+            doc.text(titleLines, margin, y);
+            y += titleLines.length * 8 + 4;
+
+            // Info
+            doc.setFontSize(9).setFont(undefined, 'normal').setTextColor(107, 114, 128);
+            doc.text(`Difficoltà: ${r.difficolta}  ·  Tempo: ${r.tempo}  ·  Porzioni: ${r.porzioni}`, margin, y);
+            y += 10;
+
+            // Allergeni
+            if (r.allergeni.length > 0) {
+                doc.setFontSize(9).setTextColor(153, 27, 27);
+                const allLines = doc.splitTextToSize(`Allergeni: ${r.allergeni.join(', ')}`, contentW);
+                doc.text(allLines, margin, y);
+                y += allLines.length * 5 + 4;
+            }
+
+            // Shelf
+            if (r.shelf_life) {
+                doc.setTextColor(30, 64, 175);
+                const slLines = doc.splitTextToSize(`Conservazione: ${r.shelf_life}`, contentW);
+                doc.text(slLines, margin, y);
+                y += slLines.length * 5 + 6;
+            }
+
+            // Ingredients
+            doc.setFontSize(13).setFont(undefined, 'bold').setTextColor(26, 26, 26);
+            doc.text(`Ingredienti${doseMultiplier !== 1 ? ` (${doseMultiplier}x)` : ''}`, margin, y);
+            y += 6;
+            doc.setFontSize(10).setFont(undefined, 'normal');
+            r.ingredienti.forEach(i => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                if (i.nome.startsWith('—')) {
+                    doc.setFont(undefined, 'bold').setTextColor(194, 65, 12);
+                    doc.text(i.nome.replace(/—/g, '').trim(), margin, y);
+                    doc.setFont(undefined, 'normal').setTextColor(26, 26, 26);
+                } else {
+                    const qty = scaleQuantity(i.quantità, doseMultiplier);
+                    doc.text(`• ${i.nome}`, margin + 2, y);
+                    doc.text(qty, pageW - margin, y, { align: 'right' });
+                }
+                y += 5;
+            });
+            y += 4;
+
+            // Procedimento
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(13).setFont(undefined, 'bold');
+            doc.text('Procedimento', margin, y);
+            y += 6;
+            doc.setFontSize(10).setFont(undefined, 'normal');
+            r.procedimento.forEach((s, idx) => {
+                const lines = doc.splitTextToSize(`${idx + 1}. ${s}`, contentW);
+                if (y + lines.length * 5 > 280) { doc.addPage(); y = 20; }
+                doc.text(lines, margin, y);
+                y += lines.length * 5 + 2;
+            });
+
+            doc.save(`${r.nome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+        }
+
+        init();
+    </script>
+</body>
+</html>
