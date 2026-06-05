@@ -519,7 +519,7 @@
         function init() {
             populateCategories();
             renderRicette(ricette);
-            updateStats(ricette.length);
+            updateStats();
             document.getElementById('searchInput').addEventListener('input', filter);
             document.getElementById('categoryFilter').addEventListener('change', filter);
             document.getElementById('difficultyFilter').addEventListener('change', filter);
@@ -540,9 +540,9 @@
         function renderRicette(list) {
             const grid = document.getElementById('ricetteGrid');
             grid.innerHTML = '';
+            document.getElementById('shownCount').textContent = list.length;
             if (list.length === 0) {
                 document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('shownCount').textContent = '0';
                 return;
             }
             document.getElementById('emptyState').style.display = 'none';
@@ -570,7 +570,6 @@
                 `;
                 grid.appendChild(card);
             });
-            document.getElementById('shownCount').textContent = list.length;
         }
 
         function filter() {
@@ -594,6 +593,11 @@
             document.getElementById('categoryFilter').value = '';
             document.getElementById('difficultyFilter').value = '';
             renderRicette(ricette);
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalCount').textContent = ricette.length;
         }
 
         function openModal(r) {
@@ -772,7 +776,12 @@
             doc.save(`${r.nome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
         }
 
-        init();
+        // Ensure DOM is ready before initializing
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
